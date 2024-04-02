@@ -131,8 +131,10 @@ dist
 .pnp.*
 
 # video files
-.avi
-.h264
-.jpg
-.jpeg
+*.avi
+*.h264
+*.jpg
+*.jpeg
+
+__pycache__
 
