@@ -73,7 +73,6 @@ web_modules/
 .yarn-integrity
 
 # dotenv environment variable files
-.env
 .env.development.local
 .env.test.local
 .env.production.local
@@ -81,7 +80,7 @@ web_modules/
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
-.parcel-cache
+.parcel-cachexxxzxkkxoxozxzx
 
 # Next.js build output
 .next
@@ -129,4 +128,12 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# video files
+*.avi
+*.h264
+*.jpg
+*.jpeg
+
+__pycache__
 

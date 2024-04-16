@@ -1,0 +1,4 @@
+- I attempted to us the picam2.post_callback and it didnt capture the video because it was too slow to process
+
+motion_detection : https://github.com/raspberrypi/picamera2/blob/main/examples/capture_motion.py
+
