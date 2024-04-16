@@ -20,9 +20,6 @@ export const processRefValue = (ref: RefObject<HTMLInputElement>) : string => {
 }
 
 export const validateNumber = (value: string) : boolean => {
-    console.log(`!isNaN(parseFloat(value): ${!isNaN(parseFloat(value))}`);
-    console.log(`parseFloat(value) > 0: ${parseFloat(value)}`);
-    console.log(`value: ${value}`);
     return !isNaN(parseFloat(value)) && parseFloat(value) > 0;
 }
 
