@@ -9,7 +9,8 @@ import numpy as np
 import cv2
 import boto3
 from dotenv import load_dotenv
-from moving_objects import MovingObjects, SampleZone, ProcessedObject 
+from moving_objects import MovingObjects, SampleZone, ProcessedObject
+from process_handler import ProcessHandler
 from constants import VIDEO_DIR, IMG_DIR, PROCESSED_DIR, PIXEL_TO_INCHES
 
 
@@ -269,5 +270,7 @@ class motionAnalyzer:
          
         
 if __name__ == "__main__":
+    processHandler = ProcessHandler(".pid")
+    processHandler.savePid(os.getpid())
     analyzer = motionAnalyzer(speedLimit=25.0, inchesRatio=1.0, sampleZonePercent=20.0)
     analyzer.processContent()

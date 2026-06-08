@@ -14,13 +14,16 @@ from constants import VIDEO_DIR, IMG_DIR, PROCESSED_DIR, PIXEL_TO_INCHES
 
 
 def obj_dict(obj):
-    """ Used to serialize objects in a list"""
+    """Used to serialize objects in a list"""
     return obj.__dict__
 
 class motionAnalyzer:
-    def __init__(self, speedLimit,
+    def __init__(self,
+                 cameraName,
+                 speedLimit,
                  inchesRatio,
                  sampleZonePercent,
+                 video,
                  displayZone=False,
                  preserveVideos=False,
                  vehicleColor=(0, 255, 0),
@@ -39,6 +42,8 @@ class motionAnalyzer:
         self.font = cv2.FONT_HERSHEY_PLAIN
         self.displayZone = displayZone
         self.centroids = []
+        self.cameraName = cameraName
+        self.video = video
 
 
     def captureImage(self, imageFileName, frame, obj):
@@ -63,12 +68,15 @@ class motionAnalyzer:
         """
         Converts the image pixels per second speed value to real-world miles per hour.
         """
-        inchesPerSec = pixelsPerSec * PIXEL_TO_INCHES
-        translatedInchesPerSec = inchesPerSec * self.inchesRatio
+        mph = 0
+        if pixelsPerSec:
+            inchesPerSec = pixelsPerSec * PIXEL_TO_INCHES
+            translatedInchesPerSec = inchesPerSec * self.inchesRatio
         
-        mph = (translatedInchesPerSec * 3600.0) / 63360.0
+            mph = (translatedInchesPerSec * 3600.0) / 63360.0
         
         return mph
+        
         
     def filterMask(self, mask):
         """
@@ -139,13 +147,12 @@ class motionAnalyzer:
         """
         Processes the video file and generates processed images, json and video if enabled
         """
-        inputVideoFile = os.path.join(VIDEO_DIR, os.listdir(VIDEO_DIR)[0])
-        inputVideoFileName = os.path.basename(inputVideoFile).split(".")[0]
-        inputVideoDateTime = datetime.fromtimestamp(os.stat(inputVideoFile).st_mtime)
+        inputVideoFileName = os.path.basename(self.video).split(".")[0]
+        inputVideoDateTime = datetime.fromtimestamp(os.stat(self.video).st_mtime)
         inputVideoDateTimeString = inputVideoDateTime.strftime("%m/%d/%Y %I:%M %p")
         outputVideoFile = os.path.join(PROCESSED_DIR, "{0}_processed.avi".format(inputVideoFileName))
     
-        videoReader = cv2.VideoCapture(inputVideoFile)
+        videoReader = cv2.VideoCapture(self.video)
 
         # gets frames per sec & frame size from video file being read
         fps = int(videoReader.get(cv2.CAP_PROP_FPS))
@@ -167,7 +174,7 @@ class motionAnalyzer:
         
         movingObjectCounter = None
         frameNumber = -1
-        print("Reading {0}...".format(os.path.basename(inputVideoFile)))
+        print("Reading {0}...".format(os.path.basename(self.video)))
         while videoReader.isOpened():
             frameNumber += 1
             print("Processing frame: {0}".format(frameNumber))
@@ -231,7 +238,7 @@ class motionAnalyzer:
                 cv2.imwrite(outputImage, image)
                 
                 # builds the processed object to send to the web service
-                processedObject = ProcessedObject(obj.id, inputVideoDateTimeString)
+                processedObject = ProcessedObject(obj.id, self.cameraName, inputVideoDateTimeString)
                 processedObject.speed = self.speedConverter(obj.speed)
                 processedObject.direction = obj.midPointPosition.vector[-1]
                 processedObject.image = os.path.join(inputVideoDateTime.strftime("%Y_%m_%d"), os.path.basename(outputImage))
@@ -240,19 +247,15 @@ class motionAnalyzer:
                 procesedObjects.append(processedObject)
                 os.remove(inputImage)
         
-        os.remove(inputVideoFile)
+        os.remove(self.video)
         print(json.dumps(procesedObjects, default=obj_dict))
         
         
 if __name__ == "__main__":
-    cameraName = 'Camera 1'
-    speedLimit = 25.0
-    ratio = 1.0
-    sampleZonePercent = 20.0
-    video = ''
-    
+    processHandler = ProcessHandler()
+    processHandler.savePid(os.getpid())
+
     argv = sys.argv[1:]
-    
     try:
         options, args = getopt.getopt(argv, 'f:1:', ['camera-name=','speed-limit=','ratio=','sample-zone=','video='])
         
@@ -274,5 +277,11 @@ if __name__ == "__main__":
         print(ex)
     
 
-    #analyzer = motionAnalyzer(speedLimit=25.0, inchesRatio=1.0, sampleZonePercent=20.0)
-    #analyzer.processContent()
+    analyzer = motionAnalyzer(cameraName=cameraName,
+                              speedLimit=float(speedLimit),
+                              inchesRatio=float(ratio),
+                              sampleZonePercent=float(sampleZonePercent),
+                              video=video)
+    analyzer.processContent()
+    
+    processHandler.removePid(os.getpid())

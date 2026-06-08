@@ -9,15 +9,10 @@ from picamera2 import Picamera2, Preview, MappedArray
 from picamera2.encoders import H264Encoder
 from picamera2.outputs import FileOutput
 from libcamera import controls
+from process_handler import ProcessHandler
+from video_handler import VideoHandler
 
-def getPid():
-    pidFile = open('.pid','w')
-    pidFile.write("{}".format(os.getpid()))
-    pidFile.close()
-
-def detectMotion(cameraName, speedLimit, ratio, sampleZonePercent):
-    getPid()
-    
+def detectMotion(cameraName, speedLimit, ratio, sampleZonePercent):   
     TIME_FORMAT = "%Y-%m-%d-%H-%M-%S"
     FRAME_RATE = 30
     LSIZE = (320, 240)
@@ -40,6 +35,8 @@ def detectMotion(cameraName, speedLimit, ratio, sampleZonePercent):
     encoding = False
     ltime = 0
     videoFileName = ""
+    videoHandler = VideoHandler()
+    print(videoHandler.getVideoList())
     
     while(True):   
         array = picam2.capture_array()
@@ -49,11 +46,11 @@ def detectMotion(cameraName, speedLimit, ratio, sampleZonePercent):
     
         if prevFrame is not None:
             pixelDiff = np.square(np.subtract(currentFrame, prevFrame)).mean()
-            #if pixelDiff > 7:
-            print(f"Pixel Difference : {pixelDiff}")
+            if pixelDiff > 7:
+                print(f"Pixel Difference : {pixelDiff}")
             if pixelDiff > 7: 
                 if not encoding:
-                    videoFileName = "./videos/{0}.h264".format(datetime.now().strftime(TIME_FORMAT))
+                    videoFileName = r"../calibrate-server/videos/{0}.h264".format(datetime.now().strftime(TIME_FORMAT))
                     encoder.output = FileOutput(videoFileName)
                     picam2.start_encoder(encoder)
                     encoding = True
@@ -63,7 +60,7 @@ def detectMotion(cameraName, speedLimit, ratio, sampleZonePercent):
             else:
                 if encoding and time.time() - ltime > 1.0:
                     picam2.stop_encoder()
-                    subprocess.Popen(['python','./process/analyze_motion.py','--camera-name={}'.format(cameraName)
+                    subprocess.Popen(['python','./analyze_motion.py','--camera-name={}'.format(cameraName)
                                       ,'--speed-limit={}'.format(speedLimit), '--ratio={}'.format(ratio),
                                       '--sample-zone={}'.format(sampleZonePercent), '--video={}'.format(videoFileName)])
                     encoding = False
@@ -73,6 +70,8 @@ def detectMotion(cameraName, speedLimit, ratio, sampleZonePercent):
     picam2.stop()
     
 if __name__ == "__main__":
+    processHandler = ProcessHandler()
+    processHandler.savePid(os.getpid())
     cameraName = 'Camera 1'
     speedLimit = 25.0
     ratio = 1.0
@@ -94,5 +93,5 @@ if __name__ == "__main__":
             ratio = value
         if name == '--sample-zone':
             sampleZonePercent = value
-            
+
     detectMotion(cameraName=cameraName, speedLimit=speedLimit, ratio=ratio, sampleZonePercent=sampleZonePercent)

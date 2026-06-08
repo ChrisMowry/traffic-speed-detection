@@ -33,8 +33,9 @@ def getVector(point1, point2):
     
 
 class ProcessedObject(object):
-    def __init__(self, id, dateTime):
+    def __init__(self, id, cameraName, dateTime):
         self.id = id
+        self.cameraName = cameraName
         self.dateTime = dateTime
         self.speed = None
         self.direction = None
@@ -118,7 +119,8 @@ class MovingObject(object):
         print("Frame Diff: {0}".format(frameDiff))
         seconds = frameDiff/fps
         
-        self.speed = getVector(position1.point, position2.point)[0] / seconds
+        if seconds > 0:
+            self.speed = getVector(position1.point, position2.point)[0] / seconds
         
 
     def draw(self, outputImage):

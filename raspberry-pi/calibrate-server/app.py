@@ -1,11 +1,19 @@
 from flask import Flask, jsonify, request, render_template
 from picamera2 import Picamera2, Preview
 from decimal import Decimal
-import urllib, subprocess, os, signal, time, sys
+from process.process_handler import ProcessHandler
+import urllib, subprocess, os, signal, time, sys, psutil
 
 app = Flask(__name__)
 
+MONITORING_SCRIPT = "./process/motion_record.py"
 
+def isRunning():
+    for pid in psutil.pids():
+        process = psutil.Process(pid)
+        if MONITORING_SCRIPT in process.cmdline() and 'python' in process.cmdline():
+            return True
+    return False
 
 @app.route("/")
 def index():
@@ -51,31 +59,31 @@ def startStopMonitoring():
         speedLimit = Decimal(urllib.parse.unquote(request.args.get('speed-limit')))
     
     if request.args.get('stop') is not None:
-        stop = bool(urllib.parse.unquote(request.args.get('stop')).title())
+        if request.args.get('stop').lower() == "true":
+            stop = True
     
     if not stop:
-        if not [var for var in (cameraName, distanceRatio, sampleZonePercent, speedLimit) if var is None]:
-            
-            response = jsonify({"success":True})
+        if not isRunning():
+            if not [var for var in (cameraName, distanceRatio, sampleZonePercent, speedLimit) if var is None]:
+                response = jsonify({"success":True, "status":"MONITORING"})
+                response.headers.add('Access-Control-Allow-Origin','*')
+                response.status_code = 200
+                running = True
+                subprocess.Popen(['python', MONITORING_SCRIPT,'--camera-name={}'.format(cameraName),'--speed-limit={}'.format(speedLimit),'--ratio={}'.format(distanceRatio),'--sample-zone={}'.format(sampleZonePercent)])
+            else:
+                response = jsonify({"success":False})
+                response.headers.add('Access-Control-Allow-Origin','*')
+                response.status_code = 400
+        else:
+            response = jsonify({"success":True, "status":"MONITORING"})
             response.headers.add('Access-Control-Allow-Origin','*')
             response.status_code = 200
-            subprocess.Popen(['python','./process/motion_record.py','--camera-name={}'.format(cameraName),'--speed-limit={}'.format(speedLimit),'--ratio'.format(distanceRatio),'--sample-zone'.format(sampleZonePercent)])
-        else:
-            response = jsonify({"success":False})
-            response.headers.add('Access-Control-Allow-Origin','*')
-            response.status_code = 400
     else:
-        pid = 0
-        
-        # read the python process id
-        pidDoc = open('.pid', 'r')
-        pid = int(pidDoc.read())
-        
-        # stop the python process
-        os.kill(pid, signal.SIGTERM)
-        pidDoc.close()
-            
-        response = jsonify({"success":True})
+        processhandler = ProcessHandler()
+        processhandler.stopAllProcesses()
+        processhandler.deleteFile()
+        runnning = False
+        response = jsonify({"success":True, "status":"NOT_MONITORING"})
         response.headers.add('Access-Control-Allow-Origin','*')
         response.status_code = 200
     
